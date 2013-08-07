@@ -1,2 +1,4 @@
 .idea
 *.pyc
+TorCast.egg-info
+dist
