@@ -75,10 +75,11 @@ class MessageFetcher(BaseHandler):
 
     @tornado.web.authenticated
     def post(self):
+        import json
         user = self.current_user
         message = self.get_argument("message")
         sub.notify_all("chatroom", u"%s:%s"%(user["name"], message))
-        return tornado.escape.json_encode(dict(rs=True))
+        return json.dumps(dict(rs=True))
 
 
 class AuthLoginHandler(tornado.web.RequestHandler, tornado.auth.GoogleMixin):
