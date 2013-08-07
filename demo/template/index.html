@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Demo Chat</title>
+    <link href="http://libs.baidu.com/bootstrap/2.0.4/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .fixt-top-60 { margin-top:60px }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+      <h1>TorCast Chatroom Demo  <small>  powered by tornado,redis,jquery</small></h1>
+    </div>
+    <form id="message-form" class="form-inline"><label>{{ user["name"] }}：<input id="message" name="message" type="text"></label><button class="btn btn-primary" type="button" id="send-btn">send</button></form>
+    <div id="content">
+        <ul class="unstyled">
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% end %}
+            <li></li>
+        </ul>
+    </div>
+
+</div>
+</body>
+<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script src="http://libs.baidu.com/bootstrap/2.0.4/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+    function render_message(rep){
+        for(var i=0;i<rep.messages.length;i++){
+            $("#content ul li").first().before("<li>"+rep.messages[i]+"</li>");
+        }
+    }
+
+
+    function fetch_message(){
+        $.ajax(
+                {
+                    cache:false,
+                    timeout:119000,
+                    type:"GET",
+                    url:"/messages",
+                    error:function(error){
+                        console.log(error);
+                        fetch_message();
+                    },
+                    dataType:"json",
+                    success:function(rep){
+                        render_message(rep);
+                        fetch_message();
+                    }
+                }
+        )
+
+    }
+
+    $(function(){
+       $("#send-btn").click(function(){
+           var fields = $("#message-form").serializeArray();
+           var params = {};
+           for(var i=0;i<fields.length;i++){
+               params[fields[i].name]=fields[i].value;
+           }
+           $.post("/messages",params,function(d){
+               $("#message").val("");
+           },'json');
+       });
+        fetch_message();
+    });
+</script>
+</html>

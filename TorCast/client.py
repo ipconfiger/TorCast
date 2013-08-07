@@ -6,6 +6,9 @@ import tornado.ioloop
 import tornado.iostream
 from tornado.iostream import StreamClosedError
 
+def tob(s, enc='utf8'):
+    return s.encode(enc) if isinstance(s, unicode) else bytes(s)
+
 class Connection(object):
     def __init__(self, host, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -44,7 +47,8 @@ class CommandParser(object):
             output.append("$%s"%len(p))
             output.append(p)
         output.append("\r\n")
-        return "\r\n".join(output)
+        command_str = "\r\n".join(output)
+        return command_str
 
 class Subscriber(object):
     def __init__(self, host, port, db):
@@ -64,12 +68,14 @@ class Subscriber(object):
     def reconnect(self, host, port, db):
         def on_line(data):
             self.on_data(data)
+        def silent(data):
+            pass
         self.conn = Connection(host, port)
         self.conn.regist_trigger(on_line)
         self.conn.write(CommandParser("SELECT","1"))
         self.conn.recive()
         self.send_conn = Connection(host, port)
-        self.send_conn.regist_trigger(on_line)
+        self.send_conn.regist_trigger(silent)
         self.send_conn.write(CommandParser("SELECT","1"))
         self.send_conn.recive()
         self.state_ok = True
@@ -86,7 +92,7 @@ class Subscriber(object):
                 message = [data for data in self.data_pool if data[0]!="$"]
                 del self.data_pool[:]
                 if message[0] == "message":
-                    self.callback(*message[1:])
+                    self.callback(message[1],message[2])
 
     def check_connection(self):
         if not self.state_ok:
@@ -95,15 +101,10 @@ class Subscriber(object):
 
 
     def notify_all(self, channel, message):
-        try:
-            self.check_connection()
-        except Exception, e:
-            logging.error(e.message)
-            return False
         if channel not in self.channels:
             return False
         try:
-            self.send_conn.write(CommandParser("publish", channel, message))
+            self.send_conn.write(CommandParser("publish", channel, tob(message)))
         except StreamClosedError, e:
             logging.error(e.message)
             self.state_ok = False
