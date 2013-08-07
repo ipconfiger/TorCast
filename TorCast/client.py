@@ -72,11 +72,11 @@ class Subscriber(object):
             pass
         self.conn = Connection(host, port)
         self.conn.regist_trigger(on_line)
-        self.conn.write(CommandParser("SELECT","1"))
+        self.conn.write(CommandParser("SELECT",str(db)))
         self.conn.recive()
         self.send_conn = Connection(host, port)
         self.send_conn.regist_trigger(silent)
-        self.send_conn.write(CommandParser("SELECT","1"))
+        self.send_conn.write(CommandParser("SELECT",str(db)))
         self.send_conn.recive()
         self.state_ok = True
 
