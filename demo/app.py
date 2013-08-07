@@ -35,7 +35,6 @@ class Chatroome(object):
 
     def say_to_all(self, message):
         self.global_messages.append(message)
-        #logging.error(str(self.global_messages))
         if len(self.global_messages)>50:
             self.global_messages=self.global_messages[:-50]
         for user_id , handler in self.user_handler.iteritems():
