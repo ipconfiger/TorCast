@@ -42,6 +42,7 @@ class Chatroome(object):
             try:
                 handler.write(tornado.escape.json_encode(dict(messages=[message,])))
                 handler.finish()
+                self.user_messages[user_id]=[]
             except Exception, e:
                 if user_id in self.user_messages:
                     msgs = self.user_messages[user_id]
