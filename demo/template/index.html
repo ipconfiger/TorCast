@@ -28,6 +28,7 @@
 <script src="http://libs.baidu.com/bootstrap/2.0.4/js/bootstrap.min.js"></script>
 <script type="text/javascript">
     function render_message(rep){
+        console.log(rep);
         for(var i=0;i<rep.messages.length;i++){
             $("#content ul li").first().before("<li>"+rep.messages[i]+"</li>");
         }
