@@ -5,6 +5,7 @@ import socket
 import tornado.ioloop
 import tornado.iostream
 from tornado.iostream import StreamClosedError
+from TorCast import STATUS_REPLY,INTEGER_REPLY,BULK_REPLY,MULTI_BULK_REPLY
 
 def tob(s, enc='utf8'):
     return s.encode(enc) if isinstance(s, unicode) else bytes(s)
@@ -16,26 +17,71 @@ class Connection(object):
         stream.connect((host, port))
         self.stream = stream
         self.channels = []
-        self.when_line = None
+        self.when_data = None
+        self.processor = None
 
     def subscribe(self, *channels):
         for chn in channels:
             if chn not in self.channels:
                 self.channels.append(chn)
 
-    def regist_trigger(self, on_line):
-        self.when_line = on_line
+    def regist_trigger(self, on_data):
+        self.when_data = on_data
 
 
     def write(self, command):
         self.stream.write(command)
 
     def recive(self):
-        def on_line(data):
-            self.when_line(data[:-2])
-            self.recive()
-        self.stream.read_until("\r\n", on_line)
+        self.processor = ReplyProcessor(self.stream, self.when_data)
 
+
+class ReplyProcessor(object):
+    def __init__(self, stream, callback):
+        self.stream = stream
+        self.callback = callback
+        self.wait_header()
+        self.multi_bulk = False
+        self.multi_bulk_count = -1
+        self.multi_bulk_cache = []
+
+    def wait_bytes(self, byte_count):
+        if not self.multi_bulk and byte_count<0:
+            self.callback(BULK_REPLY, None)
+            self.wait_header()
+            return
+        self.stream.read_bytes(byte_count+2, self.on_bulk)
+
+    def on_bulk(self, data):
+        data = data[:-2]
+        if not self.multi_bulk:
+            self.callback(BULK_REPLY, data)
+        else:
+            self.multi_bulk_cache.append(data)
+            if len(self.multi_bulk_cache)==self.multi_bulk_count:
+                self.callback(MULTI_BULK_REPLY, self.multi_bulk_cache)
+                self.multi_bulk = False
+                self.multi_bulk_count = -1
+        self.wait_header()
+
+    def wait_header(self):
+        self.stream.read_until("\r\n",self.on_header)
+
+    def on_header(self, data):
+        data = data[:-2]
+        if data[0] in ["+", "-"]:
+            self.callback(STATUS_REPLY, data[1:])
+            self.wait_header()
+        if data[0]==":":
+            self.callback(INTEGER_REPLY, int(data[1:]))
+            self.wait_header()
+        if data[0]=="$":
+            self.wait_bytes(int(data[1:]))
+        if data[0]=="*":
+            self.multi_bulk = True
+            self.multi_bulk_count = int(data[1:])
+            del self.multi_bulk_cache[:]
+            self.wait_header()
 
 
 def parseCommand(*argv):
@@ -58,9 +104,9 @@ class Subscriber(object):
         self.channels = channels
 
     def reconnect(self, host, port, db):
-        def on_line(data):
-            self.on_data(data)
-        def silent(data):
+        def on_line(type, data):
+            self.on_data(type, data)
+        def silent(type, data):
             pass
         self.conn = Connection(host, port)
         self.conn.regist_trigger(on_line)
@@ -73,18 +119,9 @@ class Subscriber(object):
         self.state_ok = True
 
 
-    def on_data(self, data):
-        if data[0] == "*":
-            del self.data_pool[:]
-            self.param_len = int(data[1:])*2
-        else:
-            if len(self.data_pool)<=self.param_len:
-                self.data_pool.append(data)
-            if len(self.data_pool)==self.param_len:
-                message = [data for data in self.data_pool if data[0]!="$"]
-                del self.data_pool[:]
-                if message[0] == "message":
-                    self.callback(message[1],message[2])
+    def on_data(self,type, data):
+        if type == MULTI_BULK_REPLY and data[0] == "message":
+            self.callback(data[1], data[2])
 
     def check_connection(self):
         if not self.state_ok:

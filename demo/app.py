@@ -26,11 +26,6 @@ class Chatroome(object):
         self.global_messages = []
 
     def wait_message(self, user_id, handler):
-        #if user_id in self.user_messages:
-        #    messages = self.user_messages[user_id]
-        #    if messages:
-        #        handler.write(tornado.escape.json_encode(dict(messages=messages)))
-        #        handler.finish()
         self.user_handler[user_id] = handler
 
     def say_to_all(self, message):
@@ -44,11 +39,7 @@ class Chatroome(object):
                 self.user_messages[user_id]=[]
             except Exception, e:
                 logging.error(e.message)
-                #if user_id in self.user_messages:
-                #    msgs = self.user_messages[user_id]
-                #    msgs.append(message)
-                #else:
-                #    self.user_messages[user_id] = [message,]
+
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -62,7 +53,6 @@ class MainHandler(BaseHandler):
     def get(self):
         messages = chatroom.global_messages
         messages.reverse()
-        logging.error(str(messages))
         self.render("index.html",messages=messages,user=self.current_user)
 
 
