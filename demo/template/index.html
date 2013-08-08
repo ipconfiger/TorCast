@@ -55,19 +55,26 @@
         )
 
     }
+    function send_message(){
+        var fields = $("#message-form").serializeArray();
+        var params = {};
+        for(var i=0;i<fields.length;i++){
+            params[fields[i].name]=fields[i].value;
+        }
+        $.post("/messages",params,function(d){
+            $("#message").val("");
+        },'json');
+    }
 
     $(function(){
        $("#send-btn").click(function(){
-           var fields = $("#message-form").serializeArray();
-           var params = {};
-           for(var i=0;i<fields.length;i++){
-               params[fields[i].name]=fields[i].value;
-           }
-           $.post("/messages",params,function(d){
-               $("#message").val("");
-           },'json');
+           send_message();
        });
-        fetch_message();
+       $("#message-form").submit(function(){
+           send_message();
+           return false;
+       }) ;
+       fetch_message();
     });
 </script>
 </html>
