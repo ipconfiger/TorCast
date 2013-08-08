@@ -5,7 +5,7 @@ __author__ = 'alex'
 
 setup(
     name='TorCast',
-    version='0.0.0.1 pre',
+    version='0.0.0.3 pre',
     packages=['TorCast'],
     author='Alexander.Li',
     author_email='superpowerlee@gmail.com',
