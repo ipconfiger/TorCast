@@ -35,21 +35,22 @@
     }
 
 
-    function fetch_message(){
+    function fetch_message(ts){
         $.ajax(
                 {
                     cache:false,
                     timeout:119000,
                     type:"GET",
-                    url:"/messages",
+                    url:"/message?ts="+ts,
                     error:function(error){
                         console.log(error);
-                        fetch_message();
+                        fetch_message(ts);
                     },
                     dataType:"json",
                     success:function(rep){
                         render_message(rep);
-                        fetch_message();
+                        var new_ts = rep.ts;
+                        fetch_message(new_ts);
                     }
                 }
         )
@@ -61,7 +62,7 @@
         for(var i=0;i<fields.length;i++){
             params[fields[i].name]=fields[i].value;
         }
-        $.post("/messages",params,function(d){
+        $.post("/message",params,function(d){
             $("#message").val("");
         },'json');
     }
@@ -74,7 +75,7 @@
            send_message();
            return false;
        }) ;
-       fetch_message();
+       fetch_message(0);
     });
 </script>
 </html>

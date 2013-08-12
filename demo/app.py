@@ -3,6 +3,7 @@ __author__ = 'Alexander.Li'
 import sys
 sys.path.append("..")
 import os
+import time
 import logging
 import tornado.auth
 import tornado.escape
@@ -25,20 +26,37 @@ class Chatroome(object):
         self.user_messages = {}
         self.global_messages = []
 
-    def wait_message(self, user_id, handler):
+    def wait_message(self, user_id, ts, handler):
+        if user_id in self.user_messages:
+            ts_now = int(time.time()*1000)
+            pool = self.user_messages[user_id]
+            if pool:
+                lost_messages = [ msg[1] for msg in pool if msg[0]> ts ]
+                if lost_messages:
+                    handler.write(tornado.escape.json_encode(dict(messages=lost_messages, ts=ts_now)))
+                    handler.finish()
+                    del self.user_messages[user_id]
+                    return
+                del self.user_messages[user_id]
         self.user_handler[user_id] = handler
 
+
     def say_to_all(self, message):
+        ts = int(time.time()*1000)
         self.global_messages.append(message)
         if len(self.global_messages)>50:
             self.global_messages=self.global_messages[:-50]
         for user_id , handler in self.user_handler.iteritems():
             try:
-                handler.write(tornado.escape.json_encode(dict(messages=[message,])))
+                handler.write(tornado.escape.json_encode(dict(messages=[message,],ts=ts)))
                 handler.finish()
-                self.user_messages[user_id]=[]
+                del self.user_messages[user_id]
             except Exception, e:
-                logging.error(e.message)
+                if user_id in self.user_messages:
+                    pool = self.user_messages[user_id]
+                    pool.append((ts, message))
+                else:
+                    self.user_messages[user_id] = [(ts, message),]
 
 
 
@@ -61,12 +79,12 @@ class MessageFetcher(BaseHandler):
     @tornado.web.asynchronous
     def get(self):
         user_id = self.current_user["claimed_id"]
-        chatroom.wait_message(user_id, self)
+        ts = self.get_argument("ts")
+        chatroom.wait_message(user_id, int(ts), self)
 
 
     @tornado.web.authenticated
     def post(self):
-        import json
         user = self.current_user
         message = self.get_argument("message")
         sub.notify_all("chatroom", u"%s:%s"%(user["name"], message))
@@ -95,7 +113,7 @@ application = tornado.web.Application([
     (r"/", MainHandler),
     (r"/auth/login", AuthLoginHandler),
     (r"/auth/logout", AuthLogoutHandler),
-    (r"/messages", MessageFetcher),
+    (r"/message", MessageFetcher),
 ],**settings)
 
 def on_message(chn, data):

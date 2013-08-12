@@ -88,6 +88,10 @@ def parseCommand(*argv):
     output = [["*",str(len(argv)),"\r\n"]] + [["$",str(len(p)),"\r\n",p,"\r\n"] for p in map(str,argv)]
     return "".join(reduce(lambda i1,i2:i1+i2 ,output))
 
+
+
+
+
 class Subscriber(object):
     def __init__(self, host, port, db):
         self.conn_params = (host,port,db)
