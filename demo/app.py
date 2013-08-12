@@ -85,9 +85,10 @@ class MessageFetcher(BaseHandler):
 
     @tornado.web.authenticated
     def post(self):
+        import cgi
         user = self.current_user
         message = self.get_argument("message")
-        sub.notify_all("chatroom", u"%s:%s"%(user["name"], message))
+        sub.notify_all("chatroom", u"%s:%s"%(user["name"], cgi.escape(message)))
         self.finish(tornado.escape.json_encode(dict(rs=True)))
 
 
