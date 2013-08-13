@@ -87,7 +87,7 @@ class MessageFetcher(BaseHandler):
     def post(self):
         import cgi
         user = self.current_user
-        message = self.get_argument("message")
+        message = self.get_argument("message")[:144]
         sub.notify_all("chatroom", u"%s:%s"%(user["name"], cgi.escape(message)))
         self.finish(tornado.escape.json_encode(dict(rs=True)))
 
